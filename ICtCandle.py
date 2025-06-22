@@ -2,6 +2,32 @@ import pandas as pd
 import mplfinance as mpf
 import requests
 
+url = "https://api.twelvedata.com/time_series?symbol=BTC&interval=5min&apikey=b1f81ac90e5d4297bc5a4e3704a79c31&start_date=2025-03-24"
+response = requests.get(url)
+data = response.json()
+
+def BreakofStructure(data):
+    
+    if (IsBerishOrBullish(data) == True):
+        candles = data["values"]
+        candles_to_check = candles[:10][::-1]
+        for i in range(len(candles_to_check)) :
+            candles_to_check[i]["high"]>candles_to_check[i+1]["high"]
+
+
+
+
+
+def FVG(data):
+    print("placeholder")
+    candles = data["values"]
+    candles_to_FVG = candles[:10][::-1]
+
+
+"""     float(candles_to_FVG[0]['high']) - float(candles_to_FVG[2]['low'])
+ """
+
+
 def IsBerishOrBullish(data):
     candles = data["values"]
     candles_to_check = candles[:10][::-1]
@@ -30,9 +56,9 @@ def IsBerishOrBullish(data):
        else :
          print("its jagged and not clear to Know if its Bullish Or Bearish but its quite Positive ! ")
     elif(counter > 0):
-        print("Its bullish")
+        True
     elif(counter < 0 ):
-        print("its bearish")
+        False
 
 
 
@@ -43,11 +69,7 @@ def IsBerishOrBullish(data):
 
 
 
-url = "https://api.twelvedata.com/time_series?symbol=BTC&interval=5min&apikey=b1f81ac90e5d4297bc5a4e3704a79c31&start_date=2025-03-24"
 
-
-response = requests.get(url)
-data = response.json()
 IsBerishOrBullish(data)
 
 
