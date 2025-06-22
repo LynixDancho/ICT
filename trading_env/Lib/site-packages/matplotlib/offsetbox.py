@@ -794,9 +794,10 @@ class TextArea(OffsetBox):
         return self._offset
 
     def get_bbox(self, renderer):
-        _, h_, d_ = renderer.get_text_width_height_descent(
-            "lp", self._text._fontproperties,
-            ismath="TeX" if self._text.get_usetex() else False)
+        _, h_, d_ = mtext._get_text_metrics_with_cache(
+            renderer, "lp", self._text._fontproperties,
+            ismath="TeX" if self._text.get_usetex() else False,
+            dpi=self.get_figure(root=True).dpi)
 
         bbox, info, yd = self._text._get_layout(renderer)
         w, h = bbox.size
@@ -1488,7 +1489,7 @@ class DraggableBase:
     def __init__(self, ref_artist, use_blit=False):
         self.ref_artist = ref_artist
         if not ref_artist.pickable():
-            ref_artist.set_picker(True)
+            ref_artist.set_picker(self._picker)
         self.got_artist = False
         self._use_blit = use_blit and self.canvas.supports_blit
         callbacks = self.canvas.callbacks
@@ -1501,6 +1502,11 @@ class DraggableBase:
                 ("motion_notify_event", self.on_motion),
             ]
         ]
+
+    @staticmethod
+    def _picker(artist, mouseevent):
+        # A custom picker to prevent dragging on mouse scroll events
+        return (artist.contains(mouseevent) and mouseevent.name != "scroll_event"), {}
 
     # A property, not an attribute, to maintain picklability.
     canvas = property(lambda self: self.ref_artist.get_figure(root=True).canvas)

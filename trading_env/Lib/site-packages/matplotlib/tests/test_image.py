@@ -122,7 +122,7 @@ def test_imshow_zoom(fig_test, fig_ref):
     ax.set_ylim([10, 20])
 
 
-@check_figures_equal()
+@check_figures_equal(extensions=['png'])
 def test_imshow_pil(fig_test, fig_ref):
     style.use("default")
     png_path = Path(__file__).parent / "baseline_images/pngsuite/basn3p04.png"
@@ -182,6 +182,28 @@ def test_imsave(fmt):
     assert arr_dpi100.shape == (1856, 2, 3 + has_alpha)
 
     assert_array_equal(arr_dpi1, arr_dpi100)
+
+
+def test_imsave_python_sequences():
+    # Tests saving an image with data passed using Python sequence types
+    # such as lists or tuples.
+
+    # RGB image: 3 rows × 2 columns, with float values in [0.0, 1.0]
+    img_data = [
+        [(1.0, 0.0, 0.0), (0.0, 1.0, 0.0)],
+        [(0.0, 0.0, 1.0), (1.0, 1.0, 0.0)],
+        [(0.0, 1.0, 1.0), (1.0, 0.0, 1.0)],
+    ]
+
+    buff = io.BytesIO()
+    plt.imsave(buff, img_data, format="png")
+    buff.seek(0)
+    read_img = plt.imread(buff)
+
+    assert_array_equal(
+        np.array(img_data),
+        read_img[:, :, :3]  # Drop alpha if present
+    )
 
 
 @pytest.mark.parametrize("origin", ["upper", "lower"])
@@ -1335,7 +1357,7 @@ def test_huge_range_log(fig_test, fig_ref, x):
               interpolation='nearest', cmap=cmap)
 
 
-@check_figures_equal()
+@check_figures_equal(extensions=['png'])
 def test_spy_box(fig_test, fig_ref):
     # setting up reference and test
     ax_test = fig_test.subplots(1, 3)
