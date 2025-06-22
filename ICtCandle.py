@@ -20,7 +20,7 @@ def IsBerishOrBullish(data):
         else:
              if(counter > 0):
                 counter = 0
-             counter -= 1
+             counter -= 1   
 
             
     if (counter == 0):
