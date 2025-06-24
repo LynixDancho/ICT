@@ -7,12 +7,40 @@ response = requests.get(url)
 data = response.json()
 
 def BreakofStructure(data):
+    boolean = IsBerishOrBullish(data)
     
-    if (IsBerishOrBullish(data) == True):
+    
+    if (boolean == True):
+
         candles = data["values"]
-        candles_to_check = candles[:10][::-1]
-        for i in range(len(candles_to_check)) :
-            candles_to_check[i]["high"]>candles_to_check[i+1]["high"]
+        candles_to_check = candles[:20][::-1]
+        
+        max = float('-inf')
+
+        
+           
+        for i in range(len(candles_to_check)-1) :
+                
+                 if (candles_to_check[i]["high"]>candles_to_check[i+1]["high"]):
+                     current_High = float(candles_to_check[i]["high"])
+                     if (  current_High > max):
+                         max = current_High
+                         print(f"Bos was Broken :{current_High}" )
+    else:
+            candles = data["values"]
+            candles_to_check = candles[:20][::-1]
+            max = float('inf')
+
+            for i in range(len(candles_to_check)-1):
+                
+                if (candles_to_check[i]["low"]<candles_to_check[i+1]["low"]):
+                      current_Low = float(candles_to_check[i]["low"])
+                      if (  current_Low < max):
+                         max = current_Low
+                         print(f"Bos was Broken : {current_Low}" )
+
+
+                
 
 
 
@@ -22,15 +50,14 @@ def FVG(data):
     print("placeholder")
     candles = data["values"]
     candles_to_FVG = candles[:10][::-1]
+    boolean = IsBerishOrBullish(data)
 
 
-"""     float(candles_to_FVG[0]['high']) - float(candles_to_FVG[2]['low'])
- """
 
 
 def IsBerishOrBullish(data):
     candles = data["values"]
-    candles_to_check = candles[:10][::-1]
+    candles_to_check = candles[:20][::-1]
    
     counter = 0
     
@@ -56,9 +83,9 @@ def IsBerishOrBullish(data):
        else :
          print("its jagged and not clear to Know if its Bullish Or Bearish but its quite Positive ! ")
     elif(counter > 0):
-        True
+         return True
     elif(counter < 0 ):
-        False
+        return False
 
 
 
@@ -69,8 +96,7 @@ def IsBerishOrBullish(data):
 
 
 
-
-IsBerishOrBullish(data)
+BreakofStructure(data)
 
 
  
