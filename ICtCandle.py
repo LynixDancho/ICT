@@ -25,7 +25,7 @@ def BreakofStructure(data):
                      current_High = float(candles_to_check[i]["high"])
                      if (  current_High > max):
                          max = current_High
-                         print(f"Bos was Broken :{current_High}" )
+                         print(f"Bos was Broken :{current_High} on date {candles_to_check[i]['datetime']}" )
     else:
             candles = data["values"]
             candles_to_check = candles[:20][::-1]
@@ -37,7 +37,7 @@ def BreakofStructure(data):
                       current_Low = float(candles_to_check[i]["low"])
                       if (  current_Low < max):
                          max = current_Low
-                         print(f"Bos was Broken : {current_Low}" )
+                         print(f"Bos was Broken : {current_Low} on date {candles_to_check[i]['datetime']}" )
 
 
                 
@@ -47,10 +47,32 @@ def BreakofStructure(data):
 
 
 def FVG(data):
-    print("placeholder")
+    fvg_zones = []
+    
     candles = data["values"]
-    candles_to_FVG = candles[:10][::-1]
+    candles_to_FVG = candles[:21][::-1]
     boolean = IsBerishOrBullish(data)
+    if boolean==True:
+        t =0
+            
+        for i in range(len(candles_to_FVG)//3):
+            if (float(candles_to_FVG[t]['high'])<float(candles_to_FVG[t+2]["low"] )):
+                 fvg_zones.append((float(candles_to_FVG[t]['high']),float(candles_to_FVG[t+2]["low"])))
+                 print(f"fvg found on the range { float(candles_to_FVG[t]['high'])} to {float(candles_to_FVG[t+2]['low'])} on the date { candles_to_FVG[t+2]['datetime']}")
+                 t+=3
+            else :
+                 t+=3
+    if boolean==False:
+        t =0
+            
+        for i in range(len(candles_to_FVG)//3):
+            if (float(candles_to_FVG[t]['low'])>float(candles_to_FVG[t+2]["high"] )):
+                 fvg_zones.append((float(candles_to_FVG[t]['low']),float(candles_to_FVG[t+2]["high"])))
+                 print(f"fvg found on the range { float(candles_to_FVG[t]['low'])} to {float(candles_to_FVG[t+2]['high'])} on the date { candles_to_FVG[t+2]['datetime']}")
+                 t+=3
+            else :
+                 t+=3
+                 
 
 
 
@@ -97,6 +119,6 @@ def IsBerishOrBullish(data):
 
 
 BreakofStructure(data)
-
+FVG(data)
 
  
