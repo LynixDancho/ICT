@@ -1,11 +1,26 @@
 import pandas as pd
 import mplfinance as mpf
 import requests
+import seaborn as sb
 
 url = "https://api.twelvedata.com/time_series?symbol=BTC&interval=5min&apikey=b1f81ac90e5d4297bc5a4e3704a79c31&start_date=2025-03-24"
 response = requests.get(url)
 data = response.json()
+def MovingAverage(data):
+    candles = data["values"]
+    candles_to_check = candles[:39][::-1] 
+    average = []
 
+    for i in range(0, 21):  
+        t = i + 5  
+        if t > len(candles_to_check):
+            break
+        current_average = sum(float(candle['close']) for candle in candles_to_check[i:t]) / (t - i)
+        average.append(current_average)
+        #print(f"Moving Average {i} to {t}: {current_average}")
+         
+     
+     
 def BreakofStructure(data):
     boolean = IsBerishOrBullish(data)
     
@@ -13,12 +28,8 @@ def BreakofStructure(data):
     if (boolean == True):
 
         candles = data["values"]
-        candles_to_check = candles[:20][::-1]
-        
-        max = float('-inf')
-
-        
-           
+        candles_to_check = candles[:20][::-1]        
+        max = float('-inf')                   
         for i in range(len(candles_to_check)-1) :
                 
                  if (candles_to_check[i]["high"]>candles_to_check[i+1]["high"]):
@@ -38,14 +49,6 @@ def BreakofStructure(data):
                       if (  current_Low < max):
                          max = current_Low
                          print(f"Bos was Broken : {current_Low} on date {candles_to_check[i]['datetime']}" )
-
-
-                
-
-
-
-
-
 def FVG(data):
     fvg_zones = []
     
@@ -120,5 +123,5 @@ def IsBerishOrBullish(data):
 
 BreakofStructure(data)
 FVG(data)
-
+MovingAverage(data)
  
