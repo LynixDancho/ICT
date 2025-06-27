@@ -6,6 +6,29 @@ import seaborn as sb
 url = "https://api.twelvedata.com/time_series?symbol=BTC&interval=5min&apikey=b1f81ac90e5d4297bc5a4e3704a79c31&start_date=2025-03-24"
 response = requests.get(url)
 data = response.json()
+
+def IsSlopingUp(data):
+    counter = 0
+    Average = MovingAverage(data)
+    for i  in range(len(Average)-1):
+         if float(Average[i]) > float(Average[i+1]):
+                if counter < 0 :
+                     counter = 0
+                counter +=1
+         else:
+              if counter >0:
+                   counter = 0
+              counter -=1
+    if counter > 0 :
+         return True 
+    elif counter < 0:
+         return False
+    elif counter == 0:
+         return None
+         
+          
+ 
+
 def MovingAverage(data):
     candles = data["values"]
     candles_to_check = candles[:39][::-1] 
@@ -18,13 +41,11 @@ def MovingAverage(data):
         current_average = sum(float(candle['close']) for candle in candles_to_check[i:t]) / (t - i)
         average.append(current_average)
         #print(f"Moving Average {i} to {t}: {current_average}")
-         
+    return average
      
      
 def BreakofStructure(data):
-    boolean = IsBerishOrBullish(data)
-    
-    
+    boolean = IsBerishOrBullish(data)        
     if (boolean == True):
 
         candles = data["values"]
@@ -123,5 +144,5 @@ def IsBerishOrBullish(data):
 
 BreakofStructure(data)
 FVG(data)
-MovingAverage(data)
+print(len(MovingAverage(data)))
  
