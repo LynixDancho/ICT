@@ -3,6 +3,8 @@ import mplfinance as mpf
 import requests
 import seaborn as sb
 import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
+import matplotlib.patches as patches
 
 url = "https://api.twelvedata.com/time_series?symbol=BTC&interval=5min&apikey=b1f81ac90e5d4297bc5a4e3704a79c31&start_date=2025-03-24"
 response = requests.get(url)
@@ -19,7 +21,7 @@ for col in ['open','high','low','close','volume']:
 
 def IsSlopingUp(data):
     counter = 0
-    Average = MovingAverage(data)
+    Average,_ = MovingAverage(data)
     for i  in range(len(Average)-1):
          if float(Average[i]) > float(Average[i+1]):
                 if counter < 0 :
@@ -40,15 +42,35 @@ def MovingAverage(data):
     candles = data["values"]
     candles_to_check = candles[:90][::-1] 
     average = []
+    count=0
 
-    for i in range(0, 21):  
+    for i in range(len(candles_to_check) - 5 + 1):  
         t = i + 5  
         if t > len(candles_to_check):
             break
         current_average = sum(float(candle['close']) for candle in candles_to_check[i:t]) / (t - i)
         average.append((current_average))
         #print(f"Moving Average {i} to {t}: {current_average}")
-    return average
+    for i in range(len(average)):
+          candle_close = float(candles_to_check[i+4]['close'])
+          if candle_close > average[i]:
+               if count <0 :
+                    count = 0
+                    count +=1
+               count +=1
+          elif candle_close < average[i]:
+               if count > 0:
+                    count =0
+                    count -=1
+               count -=1
+          
+    if count >0:
+         return average,True
+    elif count <0:
+         return average,False
+    elif count ==0:
+         return average, None
+         
          
 def BreakofStructure(data):
     bos= []
@@ -109,7 +131,7 @@ def IsFVGTested(data,fvg_zones,boolean):
 def FVG(data):
     fvg_zones = []
     fvg_Place=[]
-    
+    fvg_dateTime=[]
     candles = data["values"]
     candles_to_FVG = candles[:90][::-1]
     boolean = IsBerishOrBullish(data)
@@ -118,8 +140,9 @@ def FVG(data):
             
         for i in range(len(candles_to_FVG)//3):
             if (float(candles_to_FVG[t]['high'])<float(candles_to_FVG[t+2]["low"] )):
-                 fvg_zones.append(t)
-                 fvg_Place.append((float(candles_to_FVG[t]['high']),float(candles_to_FVG[t+2]["low"] )))
+                 fvg_Place.append(t)
+                 fvg_zones.append((float(candles_to_FVG[t]['high']),float(candles_to_FVG[t+2]["low"] )))
+                 fvg_dateTime.append(candles[t]['datetime'])
                  #print(f"Bullish fvg found on the range { float(candles_to_FVG[t]['high'])} to {float(candles_to_FVG[t+2]['low'])} on the date { candles_to_FVG[t+2]['datetime']}")
                  t+=3
             else :
@@ -129,14 +152,15 @@ def FVG(data):
             
         for i in range(len(candles_to_FVG)//3):
             if (float(candles_to_FVG[t]['low'])>float(candles_to_FVG[t+2]["high"] )):
-                 fvg_zones.append(t)
-                 fvg_Place.append((float(candles_to_FVG[t]['low']),float(candles_to_FVG[t+2]["high"] )))
+                 fvg_Place.append(t)
+                 fvg_zones.append((float(candles_to_FVG[t]['low']),float(candles_to_FVG[t+2]["high"] )))
+                 fvg_dateTime.append(candles[t]['datetime'])
                  #print(f"Bearish fvg found on the range { float(candles_to_FVG[t]['low'])} to {float(candles_to_FVG[t+2]['high'])} on the date { candles_to_FVG[t+2]['datetime']}")
                  t+=3
             else :
                  t+=3
-    testedFvgs = IsFVGTested(candles_to_FVG,fvg_zones,boolean)
-    return (fvg_Place,testedFvgs)
+    testedFvgs = IsFVGTested(candles_to_FVG,fvg_Place,boolean)
+    return (fvg_zones,testedFvgs,fvg_Place,fvg_dateTime)
 
 def IsBerishOrBullish(data):
     candles = data["values"]
@@ -172,31 +196,50 @@ def IsBerishOrBullish(data):
     elif(counter < 0 ):
         return False
 
+def ShouldYouBuyorSell(data):
+     (fvg_zones,testedFvgs,fvg_Place,fvg_dateTime)=FVG(data)
+     IsitBullishOrBearish= IsBerishOrBullish(data)
+     Sloping=IsSlopingUp(data)
+     Bos=BreakofStructure(data)
+     average,boolean=MovingAverage(data)
+     margin = 0.01
+     untestedFVG = [] 
+     isNear= False
+     for (high,low ) in fvg_zones : 
 
- 
-(fvg_zones,testedfvgs) = FVG(data)
-fig, axlist = mpf.plot(
-        df,
-        type='candle',
-        style='charles',
-        title='FVG Zones',
-        volume=False,
-        returnfig=True
-)
-ax = axlist[0]
-for low , high in fvg_zones:
-     if (low,high) in testedfvgs:
-          color = 'green'
-          alpha = 0.3
-     else:
-          color='red'
-          alpha= 0.3
-     
-     ax.axhspan(float(low), float(high), color=color, alpha=alpha)
-bos_levels= BreakofStructure(data)
-for level, dt in bos_levels:
-    ax.axhline(level, linestyle='--', color='blue', alpha=0.7, linewidth=1)
-plt.show()
-mpf.plot(df, type='candle', style='charles', title="BTC 5min", volume=False,mav=5)
+        if (low,high) not in testedFvgs:
+             untestedFVG.append((high,low))
+     for (high,low ) in untestedFVG:
 
- 
+          if low -low*margin <= float(data["values"][0]["close"])<= high - high*margin:
+               isNear= True
+               return isNear
+
+     if (
+        IsitBullishOrBearish is True and
+        Sloping is True and
+        boolean is True and
+        untestedFVG and
+        isNear
+    ):
+        return "BUY"
+     elif (
+        IsitBullishOrBearish is False and
+        Sloping is False and
+        boolean is False and
+        untestedFVG
+    ):
+        last_fvg = untestedFVG[-1]
+        low, high = last_fvg
+        if low > float(data["values"][0]["close"]):
+            return "SELL"
+
+    
+     return "WAIT"
+
+          
+
+
+mpf.plot(df,type='candle')
+print(ShouldYouBuyorSell(data))
+
