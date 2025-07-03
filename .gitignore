@@ -1,2 +1,4 @@
 .env
 env
+trading_env 
+.trading_env
