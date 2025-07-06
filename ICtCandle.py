@@ -5,7 +5,8 @@ import seaborn as sb
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import matplotlib.patches as patches
-
+#url = "https://api.twelvedata.com/time_series?symbol=SOL&interval=5min&outputsize=90&apikey=b1f81ac90e5d4297bc5a4e3704a79c31&format=JSON"
+#url = "https://api.twelvedata.com/time_series?symbol=AAPL&interval=5min&outputsize=90&apikey=b1f81ac90e5d4297bc5a4e3704a79c31&format=JSON"
 url = "https://api.twelvedata.com/time_series?symbol=BTC&interval=5min&apikey=b1f81ac90e5d4297bc5a4e3704a79c31&start_date=2025-03-24"
 response = requests.get(url)
 data = response.json()
@@ -17,6 +18,36 @@ df.set_index('datetime' , inplace=True)
 df = df.sort_index()
 for col in ['open','high','low','close','volume']:
      df[col] = df[col].astype(float)
+
+
+def LiquidtyCheck(data):
+     candles = data["values"]
+     candles_to_check = candles[:90][::-1] 
+     swinghighs=[]
+     swinglows=[]
+     for i in range(1,len(candles_to_check)-1) :
+          if candles_to_check[i-1]['high']<candles_to_check[i]['high']>candles_to_check[i+1]['high']:
+               swinghighs.append(candles_to_check[i]['high'])
+          elif candles_to_check[i-1]['low']>candles_to_check[i]['low']<candles_to_check[i+1]['low']:
+               swinglows.append(candles_to_check[i]['low'])
+     
+     return (swinghighs,swinglows)
+
+
+def Volumecheck(data):
+     candles = data['values']
+     candles_to_check = candles[:15]
+     volume =0
+     for i in range(1,len(candles_to_check)):
+          volume += float(candles_to_check[i]['volume'])
+     
+     average_volume= volume/15
+     threshhold= average_volume *1.5
+     if float(candles_to_check[0]['volume']) > threshhold:
+          return True
+     return False
+
+
 
 
 def IsSlopingUp(data):
@@ -195,51 +226,93 @@ def IsBerishOrBullish(data):
          return True
     elif(counter < 0 ):
         return False
-
 def ShouldYouBuyorSell(data):
-     (fvg_zones,testedFvgs,fvg_Place,fvg_dateTime)=FVG(data)
-     IsitBullishOrBearish= IsBerishOrBullish(data)
-     Sloping=IsSlopingUp(data)
-     Bos=BreakofStructure(data)
-     average,boolean=MovingAverage(data)
-     margin = 0.01
-     untestedFVG = [] 
-     isNear= False
-     for (high,low ) in fvg_zones : 
+    (fvg_zones, testedFvgs, fvg_Place, fvg_dateTime) = FVG(data)
+    IsitBullishOrBearish = IsBerishOrBullish(data)
+    Sloping = IsSlopingUp(data)
+    Bos = BreakofStructure(data)
+    average, boolean = MovingAverage(data)
+    margin = 0.01
+    untestedFVG = [] 
+    isNear = False
+    
+    Volume= Volumecheck(data)
+    (swinghighs,swinglows) =LiquidtyCheck(data)
 
-        if (low,high) not in testedFvgs:
-             untestedFVG.append((high,low))
-     for (high,low ) in untestedFVG:
+    isNearLiquidty= False
+    
 
-          if low -low*margin <= float(data["values"][0]["close"])<= high - high*margin:
-               isNear= True
-               return isNear
-
-     if (
-        IsitBullishOrBearish is True and
-        Sloping is True and
-        boolean is True and
-        untestedFVG and
-        isNear
-    ):
-        return "BUY"
-     elif (
-        IsitBullishOrBearish is False and
-        Sloping is False and
-        boolean is False and
-        untestedFVG
-    ):
-        last_fvg = untestedFVG[-1]
-        low, high = last_fvg
-        if low > float(data["values"][0]["close"]):
-            return "SELL"
+    current_price = float(data["values"][0]["close"])
+     
+    for level in swinghighs + swinglows:
+         level = float(level)
+         if abs(current_price - level) / level < margin:
+             isNearLiquidty = True
+             break
 
     
-     return "WAIT"
+    for (high, low) in fvg_zones:
+        if (low, high) not in testedFvgs:
+            untestedFVG.append((high, low))
 
-          
+    
+    for (high, low) in untestedFVG:
+        expanded_low = low * (1 - margin)   
+        expanded_high = high * (1 + margin)   
+        
+        if expanded_low <= current_price <= expanded_high:
+            isNear = True
+            break  
 
+
+ 
+    score = 0
+    if isNear: score +=1
+    if isNearLiquidty: score +=3
+    if Volume : score +=2
+    if IsitBullishOrBearish : score +=1
+    if Sloping : score +=1
+    if boolean : score +=1
+   
+    if  IsitBullishOrBearish is True and score >=6:
+         
+         print(f"""
+               Score: {score}
+               Trend: {'Bullish' if IsitBullishOrBearish else 'Bearish'}
+               Sloping: {Sloping}
+               Volume Spike: {Volume}
+               Near Liquidity: {isNearLiquidty}
+               Near FVG: {isNear}
+               """)
+         return print("Buy")
+    if  IsitBullishOrBearish is False and score >=6:
+         
+         
+         print(f"""
+          Score: {score}
+          Trend: {'Bullish' if IsitBullishOrBearish else 'Bearish'}
+          Sloping: {Sloping}
+          Volume Spike: {Volume}
+          Near Liquidity: {isNearLiquidty}
+          Near FVG: {isNear}
+          """)
+         return print( "Sell")
+    else:  
+     
+     print(f"""
+Score: {score}
+Trend: {'Bullish' if IsitBullishOrBearish else 'Bearish'}
+Sloping: {Sloping}
+Volume Spike: {Volume}
+Near Liquidity: {isNearLiquidty}
+Near FVG: {isNear}
+""") 
+     return print("WAIT")
+    
+
+
+   
 
 mpf.plot(df,type='candle')
-print(ShouldYouBuyorSell(data))
+ShouldYouBuyorSell(data)
 
