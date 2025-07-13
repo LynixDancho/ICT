@@ -2,3 +2,4 @@
 env
 trading_env 
 .trading_env
+test.py

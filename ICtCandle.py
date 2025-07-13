@@ -5,9 +5,13 @@ import seaborn as sb
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import matplotlib.patches as patches
+from datetime import datetime
+from plotly.subplots import make_subplots
+import plotly.graph_objects as go 
+
 #url = "https://api.twelvedata.com/time_series?symbol=SOL&interval=5min&outputsize=90&apikey=b1f81ac90e5d4297bc5a4e3704a79c31&format=JSON"
-#url = "https://api.twelvedata.com/time_series?symbol=AAPL&interval=5min&outputsize=90&apikey=b1f81ac90e5d4297bc5a4e3704a79c31&format=JSON"
-url = "https://api.twelvedata.com/time_series?symbol=BTC&interval=5min&apikey=b1f81ac90e5d4297bc5a4e3704a79c31&start_date=2025-03-24"
+url = "https://api.twelvedata.com/time_series?symbol=AAPL&interval=5min&outputsize=90&apikey=b1f81ac90e5d4297bc5a4e3704a79c31&format=JSON"
+#url = "https://api.twelvedata.com/time_series?symbol=BTC&interval=5min&apikey=b1f81ac90e5d4297bc5a4e3704a79c31&start_date=2025-03-24"
 response = requests.get(url)
 data = response.json()
 candles = data["values"][:90][::-1] 
@@ -173,7 +177,7 @@ def FVG(data):
             if (float(candles_to_FVG[t]['high'])<float(candles_to_FVG[t+2]["low"] )):
                  fvg_Place.append(t)
                  fvg_zones.append((float(candles_to_FVG[t]['high']),float(candles_to_FVG[t+2]["low"] )))
-                 fvg_dateTime.append(candles[t]['datetime'])
+                 fvg_dateTime.append(candles_to_FVG[t]['datetime'])
                  #print(f"Bullish fvg found on the range { float(candles_to_FVG[t]['high'])} to {float(candles_to_FVG[t+2]['low'])} on the date { candles_to_FVG[t+2]['datetime']}")
                  t+=3
             else :
@@ -184,8 +188,8 @@ def FVG(data):
         for i in range(len(candles_to_FVG)//3):
             if (float(candles_to_FVG[t]['low'])>float(candles_to_FVG[t+2]["high"] )):
                  fvg_Place.append(t)
-                 fvg_zones.append((float(candles_to_FVG[t]['low']),float(candles_to_FVG[t+2]["high"] )))
-                 fvg_dateTime.append(candles[t]['datetime'])
+                 fvg_zones.append((float(candles_to_FVG[t+2]['high']),float(candles_to_FVG[t]["low"] )))
+                 fvg_dateTime.append(candles_to_FVG[t]['datetime'])
                  #print(f"Bearish fvg found on the range { float(candles_to_FVG[t]['low'])} to {float(candles_to_FVG[t+2]['high'])} on the date { candles_to_FVG[t+2]['datetime']}")
                  t+=3
             else :
@@ -310,9 +314,65 @@ Near FVG: {isNear}
      return print("WAIT")
     
 
+from datetime import timedelta
 
-   
+fvg_type = IsBerishOrBullish(data)
+(fvg_zones, _, indexes, _) = FVG(data)
 
-mpf.plot(df,type='candle')
+# Mark FVG zones in the dataframe
+for idx, (high, low) in zip(indexes, fvg_zones):
+    df.loc[df.index[idx], "FVG-high"] = high
+    df.loc[df.index[idx], "FVG-low"] = low
+
+# Plotting
+fig = go.Figure()
+
+# Add candlesticks
+fig.add_trace(go.Candlestick(
+    x=df.index,
+    open=df["open"],
+    high=df["high"],
+    low=df["low"],
+    close=df["close"],
+    name="Candles"
+))
+
+# Add FVG rectangles
+for idx in indexes:
+    index_time = df.index[idx]
+    try:
+        start = df.loc[index_time, "FVG-high"]
+        end = df.loc[index_time, "FVG-low"]
+    except KeyError:
+        continue
+
+    color = "rgba(0,255,0,0.3)" if fvg_type else "rgba(255,0,0,0.3)"
+
+    fig.add_shape(
+        type="rect",
+        x0=index_time - pd.Timedelta(minutes=10),
+        x1=index_time + pd.Timedelta(minutes=150),
+        y0=start,
+        y1=end,
+        fillcolor=color,
+        opacity=0.6,
+        layer="below",
+        line=dict(width=0)
+    )
+
+# Layout
+fig.update_layout(
+    width=1200,
+    height=800,
+    xaxis=dict(showgrid=False),
+    yaxis=dict(showgrid=False),
+    plot_bgcolor='black',
+    paper_bgcolor='black',
+    title="Candlestick Chart with FVG Zones"
+)
+
+fig.show(renderer='browser')
+
+
 ShouldYouBuyorSell(data)
 
