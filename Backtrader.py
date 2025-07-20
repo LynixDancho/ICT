@@ -5,11 +5,12 @@ import seaborn as sb
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import matplotlib.patches as patches
-from datetime import datetime
+import datetime
 from plotly.subplots import make_subplots
 import plotly.graph_objects as go 
+import mplfinance as mpf
 
-#url = "https://api.twelvedata.com/time_series?symbol=SOL&interval=5min&outputsize=90&apikey=b1f81ac90e5d4297bc5a4e3704a79c31&format=JSON"
+
 url = "https://api.twelvedata.com/time_series?symbol=AAPL&interval=5min&outputsize=5000&apikey=b1f81ac90e5d4297bc5a4e3704a79c31&format=JSON"
 #url = "https://api.twelvedata.com/time_series?symbol=BTC&interval=5min&apikey=b1f81ac90e5d4297bc5a4e3704a79c31&start_date=2025-03-24"
 response = requests.get(url)
@@ -31,6 +32,7 @@ class youtubeStrategy(bt.Strategy):
         ('slow_ema_period',21)
     )
     def __init__(self):
+        
         self.fast_ema=  bt.indicators.ExponentialMovingAverage(self.data.close , period=self.params.fast_ema_period)
         self.slow_ema=  bt.indicators.ExponentialMovingAverage(self.data.close , period=self.params.slow_ema_period)
         self.crossover= bt.indicators.CrossOver(self.fast_ema,self.slow_ema)
@@ -50,6 +52,7 @@ class Strategy(bt.Strategy):
         print(f'{dt.isoformat()}, {txt}')
 
     def __init__(self):
+        self.atr = bt.indicators.AverageTrueRange(self.data, period=14)
         self.Rsi=bt.indicators.RSI_SMA(self.data)
         self.macd=bt.indicators.MACD(self.data)
         ema1 = bt.indicators.ExponentialMovingAverage()
@@ -94,39 +97,52 @@ class Strategy(bt.Strategy):
             if abs(float(self.datas[0].close[0]) - float(level) )/level < 0.01:
                 NearLiquidity= True
                 break
-        
+        self.highest_close = self.datas[0].close[0]
+
 
         if self.order:
             return
         if not self.position :
              
             if not trend and NearLiquidity and Volume :
-                #i'm trying to see if its near a Low low So that price can go up 
-                #Then i'll see if the price is rising 
-                self.order= self.buy()
-            if trend and Volume and not NearLiquidity and isNear:
-                self.order= self.buy()
+                if self.datas[0].close[0] > self.datas[0].open[0]:
+ 
+                    self.order= self.buy()
+                    self.log(f"the Volume is {Volume} |  Trend is {trend} Nearliquidity {NearLiquidity}")
+            elif trend and Volume and not NearLiquidity and isNear:
+                if self.data.close[0] > self.data.open[0] and self.Rsi[0] > 50:
+
+                    self.log(f"the Volume is {Volume} | isNear is {isNear} Trend is {trend} Nearliquidity {NearLiquidity}")
+                    self.order= self.buy()
    
         if self.position:
-            target_profit_pct = 0.005 
-            
+            self.highest_close = max(self.highest_close, self.datas[0].close[0])
+            raw_target = 2 * self.atr[0] / self.datas[0].close[0]
+            target_profit_pct = min(max(0.015, raw_target), 0.02) 
+            current_time = self.datas[0].datetime.time(0) 
+            market_close = datetime.time(15,50)
+
+         
+             
              
             if trend and Volume and NearLiquidity and self.Rsi[0] > 70:
                 self.log(f"the Volume is {Volume} | the RSI is {self.Rsi[0]} Trend is {trend} Nearliquidity {NearLiquidity}")
                 if self.datas[0].close[0]<self.datas[0].close[-1] and self.datas[0].close[0]> self.buyprice * (1 + target_profit_pct):
                     self.order = self.sell()
-            if self.datas[0].close[0]> self.buyprice * (1 + target_profit_pct):
+            elif  self.datas[0].close[0]<self.datas[0].close[-1] and self.datas[0].close[0]> self.buyprice * (1 + target_profit_pct):
                 self.order = self.sell()
-                #if self.buyprice: 
-                    #target_price = self.buyprice * 1.02
-                    #tolerance = 0.005 
-                    #self.log(f"The buy price {self.buyprice}")
-                    #if abs(self.datas[0].close[0] - target_price) / target_price <= tolerance:
-                      #  self.order = self.sell()
+            elif current_time >= market_close and self.datas[0].close[0] > self.buyprice * (1 + target_profit_pct):
+                self.order = self.sell()
+            elif self.Rsi[0]>75 and self.datas[0].close[0]<self.datas[0].close[-1] and self.datas[0].close[0]> self.buyprice * (1 + target_profit_pct):
+                self.order=self.sell()
+
+
+
+
 
             
 
-        self.log(f"Candle {len(self)} | Date: {self.data.datetime.date(0)} | Close: {self.data.close[0]}")
+        #self.log(f"Candle {len(self)} | Date: {self.data.datetime.date(0)} | Open: {self.data.open[0]} | RSI : {self.Rsi[0]}")
 
 
 
@@ -307,7 +323,6 @@ class Strategy(bt.Strategy):
         else:
             return None
         
-    
 data = bt.feeds.PandasData(dataname=df,
                            high=1,
                            low=2,
@@ -322,10 +337,11 @@ cerebro = bt.Cerebro()
 cerebro.addstrategy(Strategy)
 cerebro.adddata(data)
 cerebro.broker.set_cash(10000)
-cerebro.addsizer(bt.sizers.FixedSize, stake=10)
+cerebro.addsizer(bt.sizers.FixedSize, stake=40)
 
 cerebro.broker.setcommission(commission=0.001)
 print(f"Starting Portfolio Value: {cerebro.broker.getvalue()}")
 cerebro.run()
 print(f"Final Portfolio Value: {cerebro.broker.getvalue()}")
-cerebro.plot()
+
+mpf.plot(df, type='candle', style='yahoo', title='Candlestick Chart Example', volume=True)
