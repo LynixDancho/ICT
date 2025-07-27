@@ -9,6 +9,7 @@ import datetime
 from plotly.subplots import make_subplots
 import plotly.graph_objects as go 
 import mplfinance as mpf
+import backtrader as bt
 
 
 url = "https://api.twelvedata.com/time_series?symbol=AAPL&interval=5min&outputsize=5000&apikey=b1f81ac90e5d4297bc5a4e3704a79c31&format=JSON"
@@ -25,7 +26,8 @@ df = df.sort_index()
 for col in ['open','high','low','close','volume']:
      df[col] = df[col].astype(float)
 
-import backtrader as bt
+
+
 class youtubeStrategy(bt.Strategy):
     params =(
         ('fast_ema_period',9),
@@ -62,28 +64,34 @@ class Strategy(bt.Strategy):
         close_over_ema = self.data.close > ema1
         sma_ema_diff = sma1 - ema1
         self.order=None
+        self.holding_time=0
+        self.highest_price = 0.0
+        self.highest_close = 0.0
 
         self.buy_sig = bt.And(close_over_sma, close_over_ema, sma_ema_diff > 0)
          
-
     def next(self): 
 
-        
+         
         untested=[]
         isNear=False
         NearLiquidity= False
+        NearLiquidityDown=False
+        self.highest_price = max(self.highest_price, self.datas[0].close[0])
 
-        if len(self)<60:
+
+        if len(self)<20:
             return 
         trend = self.isBearishorBullish()
         fvg_zones, _, _, testedFvgs = self.FVG()
         bos = self.Break_of_Structure()
+        liquidity_tolerance =0.0012
         for (high,low ) in fvg_zones:
             if (high,low) not in  testedFvgs and (high,low) not in untested:
                 untested.append((high,low))
         for (high,low) in untested:
-            expanded_low= low*(1-0.01)
-            expanded_high=high*(1+0.01)
+            expanded_low= low*(1-liquidity_tolerance)
+            expanded_high=high*(1+liquidity_tolerance)
 
                     
             if expanded_low<= self.datas[0].close[0] <= expanded_high:
@@ -91,58 +99,93 @@ class Strategy(bt.Strategy):
                 break
         Volume= self.VolumeCheck()
         (swinghigh,swinglow) = self.LiquidtyCheck()
-        for level in swinghigh + swinglow:
-            if level == 0 :
-                continue
-            if abs(float(self.datas[0].close[0]) - float(level) )/level < 0.01:
-                NearLiquidity= True
-                break
-        self.highest_close = self.datas[0].close[0]
+        LiquidityUp= sorted([level for level in swinghigh if level > self.datas[0].close[0]],  reverse=True)
+        LiquidityDown= sorted([level for level in swinglow if level < self.datas[0].close[0]])
+        if LiquidityUp:
+            nearest_up=LiquidityUp[0]
+            NearLiquidity = abs(self.datas[0].close[0] - nearest_up)/nearest_up < liquidity_tolerance
+        else:
+            NearLiquidity= False
 
+        if LiquidityDown:
+            nearest_Down=LiquidityDown[0]
+            NearLiquidityDown = abs(self.datas[0].close[0] - nearest_Down)/nearest_Down < liquidity_tolerance
+        else:
+            NearLiquidityDown= False
 
+         
+
+        current_close=self.datas[0].close[0]
         if self.order:
             return
         if not self.position :
              
-            if not trend and NearLiquidity and Volume :
-                if self.datas[0].close[0] > self.datas[0].open[0]:
- 
-                    self.order= self.buy()
-                    self.log(f"the Volume is {Volume} |  Trend is {trend} Nearliquidity {NearLiquidity}")
-            elif trend and Volume and not NearLiquidity and isNear:
-                if self.data.close[0] > self.data.open[0] and self.Rsi[0] > 50:
+            if not trend and NearLiquidityDown and Volume and  self.buy_sig :
+                if self.datas[0].close[0] > self.datas[0].open[0] and self.Rsi[0]<45 and self.datas[0].close[-1] > self.datas[0].open[-1] and self.datas[0].close[-2] > self.datas[0].open[-2]:
+                    if self.datas[0].close[0]>max (self.datas[0].close[-1],self.datas[0].close[-2]) and self.Rsi[0]>self.Rsi[-1]>self.Rsi[-2]:
+                        if self.datas[0].low[0] < self.datas[0].low[-1] and self.datas[0].close[0] > self.datas[0].open[0] * 1.002:
 
-                    self.log(f"the Volume is {Volume} | isNear is {isNear} Trend is {trend} Nearliquidity {NearLiquidity}")
-                    self.order= self.buy()
+
+ 
+                            self.order= self.buy()
+                            self.log(f"the Volume is {Volume} |  Trend is {trend} Nearliquidity {NearLiquidityDown}")
+            elif trend and Volume:
+                if 50<self.Rsi[0]<65:
+                    if self.data.close[0] >   max(self.datas[0].high[-1], self.datas[0].high[-2]):
+                        if not NearLiquidity and self.datas[0].close[0] > self.datas[0].open[0] and self.datas[0].close[-1] > self.datas[0].open[-1] and self.datas[0].close[-2] > self.datas[0].open[-2]:
+                            self.log(f"the Volume is {Volume} | isNear is {isNear} Trend is {trend} Nearliquidity {NearLiquidity}")
+                            self.order= self.buy()
+
+
+
    
         if self.position:
             self.highest_close = max(self.highest_close, self.datas[0].close[0])
             raw_target = 2 * self.atr[0] / self.datas[0].close[0]
-            target_profit_pct = min(max(0.015, raw_target), 0.02) 
+            target_profit_pct = 0.0045 
             current_time = self.datas[0].datetime.time(0) 
             market_close = datetime.time(15,50)
-
+            
+            self.highest_price = max(self.highest_price ,current_close)
+            trailing_stop = self.buyprice * (1 - 2 * self.atr[0] / self.data.close[0])
+            Commision =  (self.datas[0].close[0]-self.buyprice -(self.datas[0].close[0] *0.01))>0  
+            stoploss= 0.01
+            
          
              
              
             if trend and Volume and NearLiquidity and self.Rsi[0] > 70:
-                self.log(f"the Volume is {Volume} | the RSI is {self.Rsi[0]} Trend is {trend} Nearliquidity {NearLiquidity}")
+                #self.log(f"the Volume is {Volume} | the RSI is {self.Rsi[0]} Trend is {trend} Nearliquidity {NearLiquidity}")
                 if self.datas[0].close[0]<self.datas[0].close[-1] and self.datas[0].close[0]> self.buyprice * (1 + target_profit_pct):
                     self.order = self.sell()
-            elif  self.datas[0].close[0]<self.datas[0].close[-1] and self.datas[0].close[0]> self.buyprice * (1 + target_profit_pct):
+            elif   self.datas[0].close[0]> self.buyprice * (1 + target_profit_pct):
                 self.order = self.sell()
             elif current_time >= market_close and self.datas[0].close[0] > self.buyprice * (1 + target_profit_pct):
                 self.order = self.sell()
-            elif self.Rsi[0]>75 and self.datas[0].close[0]<self.datas[0].close[-1] and self.datas[0].close[0]> self.buyprice * (1 + target_profit_pct):
+            elif self.Rsi[0]>75 and self.datas[0].close[0] > self.buyprice and Commision:
+                self.order=self.sell()
+            elif self.datas[0].close[0] <= self.buyprice-(self.buyprice*stoploss):
                 self.order=self.sell()
 
 
+                
+                
 
+                
 
 
             
+ 
 
-        #self.log(f"Candle {len(self)} | Date: {self.data.datetime.date(0)} | Open: {self.data.open[0]} | RSI : {self.Rsi[0]}")
+
+
+
+
+
+
+        self.log(f"LiquidityUP {LiquidityUp} and Liquidity {LiquidityDown}")   
+        self.log(f"LiquidityUP {NearLiquidity} and Liquidity {NearLiquidityDown}")
+        self.log(f"Candle {len(self)} | Date: {self.data.datetime.date(0)} | Close: {self.data.close[0]} | RSI : {self.Rsi[0]} | trend {trend}| Volume {Volume} | Nearliquidity {NearLiquidity}  ")
 
 
 
@@ -184,14 +227,16 @@ class Strategy(bt.Strategy):
             print(f"Trade closed. Gross PnL: {trade.pnl}, Net PnL (after commission): {trade.pnlcomm}")
 
     def LiquidtyCheck(self):
-        lookback=60
+        lookback=20
         swinghighs=[]
         swinglows=[]
         for i in range (-(lookback-1),-1):
             if self.datas[0].high[i-1]<self.datas[0].high[i]>self.datas[0].high[i+1]:
-                swinghighs.append(self.datas[0].high[i])
+                if self.datas[0].high[i]>self.datas[0].close[0]:
+                    swinghighs.append(self.datas[0].high[i])
             if self.datas[0].low[i-1]<self.datas[0].low[i]>self.datas[0].low[i+1]:
-                swinglows.append(self.datas[0].low[i])
+                if self.datas[0].low[i]<self.datas[0].close[0]:
+                    swinglows.append(self.datas[0].low[i])
         return swinghighs,swinglows
     def VolumeCheck(self):
         volume = 0
@@ -206,7 +251,7 @@ class Strategy(bt.Strategy):
 
     def Break_of_Structure(self):
         bos=[]
-        lookback=60
+        lookback=20
         boolean=self.isBearishorBullish()
         if boolean == True:
             max = float("-inf")
@@ -237,7 +282,7 @@ class Strategy(bt.Strategy):
         fvg_datetime = []
 
         
-        lookback = 60
+        lookback = 20
         if len(self)<lookback:
             return
         
@@ -266,7 +311,7 @@ class Strategy(bt.Strategy):
     def IsFVGTested(self, fvg_places, is_bullish):
         tested_fvg = []
         data_len = len(self.datas[0])
-        lookback=60
+        lookback=20
         
 
         for t in fvg_places:
@@ -299,7 +344,7 @@ class Strategy(bt.Strategy):
     def isBearishorBullish(self):
         up_count = 0
         down_count = 0
-        lookback=60
+        lookback=20
         if len(self.datas[0]) < lookback + 1:
             return
          
@@ -323,6 +368,8 @@ class Strategy(bt.Strategy):
         else:
             return None
         
+
+        
 data = bt.feeds.PandasData(dataname=df,
                            high=1,
                            low=2,
@@ -337,11 +384,11 @@ cerebro = bt.Cerebro()
 cerebro.addstrategy(Strategy)
 cerebro.adddata(data)
 cerebro.broker.set_cash(10000)
-cerebro.addsizer(bt.sizers.FixedSize, stake=40)
+cerebro.addsizer(bt.sizers.FixedSize, stake=1)
 
 cerebro.broker.setcommission(commission=0.001)
 print(f"Starting Portfolio Value: {cerebro.broker.getvalue()}")
 cerebro.run()
 print(f"Final Portfolio Value: {cerebro.broker.getvalue()}")
 
-mpf.plot(df, type='candle', style='yahoo', title='Candlestick Chart Example', volume=True)
+cerebro.plot(style="candles")
