@@ -1,4 +1,5 @@
 from typing import List
+import numpy  as np 
 a = [
     [2, 0, 0, 0],
     [0, 3, 0, 0],
@@ -21,13 +22,6 @@ def determinant(a:List[int]):
 
 
         return det
-
-c = determinant(a)
-
-print(c)
-a = [
-    [1, 2, 3, 4],
-    [5, 6, 7, 8],
-    [2, 6, 4, 1],
-    [3, 1, 5, 9]
-]
+b=np.array([[4,2],[1,3]])
+eigval =np.linalg.svd(a)
+print(eigval)
