@@ -1,27 +1,34 @@
 from typing import List
 import numpy  as np 
-a = [
-    [2, 0, 0, 0],
-    [0, 3, 0, 0],
-    [0, 0, 4, 0],
-    [0, 0, 0, 5]
-]
-def determinant(a:List[int]):
-    det=0
-    if len(a) == len(a[0]):
-        if len(a) == 2:
-            b= a[0][0]*a[1][1] - a[0][1]*a[1][0]
-            return b 
-        for c in range(len(a)):
+a = np.array([
+    [ 0.021, 0.018, 0.030, 0.025],
+    [-0.015,-0.012,-0.020,-0.017],
+    [ 0.032, 0.028, 0.041, 0.035],
+    [ 0.018, 0.015, 0.022, 0.019],
+    [-0.023,-0.019,-0.030,-0.025],
+    [ 0.027, 0.024, 0.035, 0.029],
+    [ 0.015, 0.013, 0.018, 0.016],
+    [-0.018,-0.015,-0.024,-0.020]
+])
+def PCA(a:np.ndarray):
+    mean = np.mean(a, axis=0)
+    
+    centerd_data=(a-mean)
+    print('\n'"****** THE VARIANCE OF CENTERED DATA *********", np.var(centerd_data,axis=0),'\n')
+    atransposed = np.transpose(centerd_data)
+    covar= (np.matmul(atransposed,centerd_data))/(len(a)-1)
+    print('\n'"******  COVAR ********* \n", covar,'\n')
 
-            newMatrice=[
-                [x for j , x in enumerate(row) if j!=c]for i, row in enumerate(a) if i!=0  
-                ]
-            det += (-1)**c  * a[0][c] * determinant(newMatrice)
-            
+    values , veceetors = np.linalg.eigh(covar)
+    print('\n ',np.flip(veceetors, axis=1), '\n')
+    veceetors=np.flip(veceetors, axis=1)
+    PCA = np.matmul(centerd_data,veceetors)
+    print('\n'"****** THE VARIANCE OF PCA DATA *********", np.var(PCA,axis=1),'\n')
+    print('\n'"******  eignvalues  *********", values,'\n')
 
+    return PCA
 
-        return det
-b=np.array([[4,2],[1,3]])
-eigval =np.linalg.svd(a)
-print(eigval)
+    
+
+b = PCA(a)
+print(b)
