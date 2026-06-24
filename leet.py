@@ -1,34 +1,49 @@
 from typing import List
 import numpy  as np 
-a = np.array([
-    [ 0.021, 0.018, 0.030, 0.025],
-    [-0.015,-0.012,-0.020,-0.017],
-    [ 0.032, 0.028, 0.041, 0.035],
-    [ 0.018, 0.015, 0.022, 0.019],
-    [-0.023,-0.019,-0.030,-0.025],
-    [ 0.027, 0.024, 0.035, 0.029],
-    [ 0.015, 0.013, 0.018, 0.016],
-    [-0.018,-0.015,-0.024,-0.020]
-])
-def PCA(a:np.ndarray):
-    mean = np.mean(a, axis=0)
-    
-    centerd_data=(a-mean)
-    print('\n'"****** THE VARIANCE OF CENTERED DATA *********", np.var(centerd_data,axis=0),'\n')
-    atransposed = np.transpose(centerd_data)
-    covar= (np.matmul(atransposed,centerd_data))/(len(a)-1)
-    print('\n'"******  COVAR ********* \n", covar,'\n')
+import matplotlib.pyplot as pl
 
-    values , veceetors = np.linalg.eigh(covar)
-    print('\n ',np.flip(veceetors, axis=1), '\n')
-    veceetors=np.flip(veceetors, axis=1)
-    PCA = np.matmul(centerd_data,veceetors)
-    print('\n'"****** THE VARIANCE OF PCA DATA *********", np.var(PCA,axis=1),'\n')
-    print('\n'"******  eignvalues  *********", values,'\n')
+#quadrratic 1D
 
-    return PCA
 
-    
 
-b = PCA(a)
-print(b)
+def yfunc(y):
+    return 4*y
+def xfunc(x):
+    return 2*x
+
+
+def quadraticGradient():
+
+    x=3
+    y=2
+    pltox = [x]
+    ploty = [y]
+    learning_rate=0.1
+    for i in range(20):
+        y= y- learning_rate*yfunc(y)
+        x=x-learning_rate*xfunc(x)
+        pltox.append(x)
+        ploty.append(y)
+    pltox= np.array(pltox)
+    ploty= np.array(ploty)
+    x_grid = np.linspace(-4, 4, 100)
+    y_grid = np.linspace(-4, 4, 100)
+    X, Y = np.meshgrid(x_grid, y_grid)
+    Z = X**2 + 2 * Y**2  # The original 2D function shape
+
+    # 2. Draw the background contours
+    pl.contour(X, Y, Z, levels=20, cmap="viridis")
+
+    # 3. Draw your gradient descent path (Fixed the syntax here!)
+    pl.plot(pltox, ploty, color="red", marker="o", label="GD Path")
+
+    pl.xlabel("X")
+    pl.ylabel("Y")
+    pl.title("2D Gradient Descent Path on Contours")
+    pl.legend()
+    pl.show()
+
+    return x,y
+
+
+print(quadraticGradient())
