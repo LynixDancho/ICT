@@ -1,31 +1,19 @@
 from typing import List
 import numpy  as np 
+import math as m
 import matplotlib.pyplot as pl
 import scipy.optimize as sc
-def objective(x):
-    x1=x[0]
-    y=x[1]
+def taylor_sin(x):
+    res = x-(x**3)/m.factorial(3)+(x**5)/m.factorial(5)-(x**7)/m.factorial(7)+(x**9)/m.factorial(9)
+    return res
 
 
-    obj = x1**2 + y**2
-    return obj 
+#for i in np.linspace(-3, 3, 100):
+    v =np.sin(i)
+    y=  taylor_sin(i)
+    x=v-y
+    pl.plot(i,x,'b.')
+     
 
-
-def constraint1(x):
-    y=x[1]
-    x1=x[0]
-    return x1+y-1 
-
-
-
-
-x0= [1,1]
- 
-print(objective(x0))
-
-cons ={
-    'type': 'eq' , 'fun':constraint1
-}
-
-s= sc.minimize(objective,x0,method='SLSQP',constraints=cons) 
-print(s)
+pl.show()
+print(f'the taylor sin is {taylor_sin(-1.5)} and tru value of sin is {np.sin(-1.5)}')
