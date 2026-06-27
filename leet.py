@@ -11,79 +11,19 @@ class Solution:
     def addTwoNumbers(self, l1: ListNode, l2: ListNode) -> ListNode:
         head = ListNode()
         tail = head
-        counter=False
-        while l1 and l2 :
-            if l1.val + l2.val   >=  10 :
-                if counter :
-                    add= str(l1.val + l2.val +1)
-                    tail.next=ListNode(int(add[1]))
-                    counter=True
-                else :
-                    add= str(l1.val + l2.val)
-                    tail.next = ListNode(int(add[1]))
-                    counter=True
-               
-            else:
-                if counter :
-                    if l1.val + l2.val +1 >=  10:
-                        add= str(l1.val + l2.val +1)
-                        tail.next = ListNode(int(add[1]))
-                        counter=True
-                    else:
-                        tail.next = ListNode(l1.val+l2.val +1)
-                        print(tail.next.val)
-                        counter = False
+        counter=0
+        while l1 and l2 or counter :
+         value1= l1.val if l1 else 0 
+         value2 = l2.val if l2 else 0
+         add  = value1 + value2 + counter
+         counter = add // 10 
+         add = add% 10
+         tail.next = ListNode(add)
+         tail= tail.next
+         l1=l1.next if l1 else l1 
+         l2=l2.next if l2 else l2
 
-                else:    
-                    tail.next=ListNode(l1.val+l2.val )
-            tail= tail.next
-            l1=l1.next
-            l2= l2.next
-        while l1 :
-            
-            if counter : 
-                if l1.val  +1 >=  10:
-                    add= str(l1.val +1 )                     
-                    tail.next = ListNode(int(add[1]))
-                    counter=True
-                    l1=l1.next
-                    tail = tail.next
-                else:
-                    tail.next = ListNode(l1.val +1)
-                    
-                    counter=False
-                    tail= tail.next
-                    l1=l1.next
-            else:
-                tail.next = l1
-                break
-        while l2  :
-            if counter : 
-                if l2.val  +1 >=  10:
-                    add= str(l2.val +1)
-                    tail.next = ListNode(int(add[1]))
-                    counter=True
-                    tail= tail.next
-                    l2=l2.next
-                else:
-                    tail.next = ListNode(l2.val +1)
-                    counter=False
-                    tail= tail.next
-                    l2=l2.next
-                
-            else:
-                tail.next = l2
-                break
-        if counter :
-            tail.next= ListNode(1)
-
-
-
-            
-
-            
-        
-        
+         
 
 
         return head.next
