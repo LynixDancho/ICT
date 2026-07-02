@@ -3,3 +3,7 @@ env
 trading_env 
 .trading_env
 test.py
+.venv/Scripts/pythonw.exe
+.venv/Scripts/python.exe
+.venv/pyvenv.cfg
+.venv
