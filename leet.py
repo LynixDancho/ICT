@@ -3,17 +3,18 @@ import numpy  as np
 import math as m
 import matplotlib.pyplot as plt
 from scipy import stats
-import re
+import time
 def Partition( array , left:int , right:int  ):
         i = left
         j= right-1
         pivot= array[right]
         while i<j:
+                print(j )
                 while array[i]<pivot and i<right:
                         i+=1
-                while array[j]> pivot and j>left:
+                while array[j]>= pivot and j>left:
                         j-=1
-                        print(j)
+                        
                 if i<j:
                         array[i], array[j]= array[j],array[i]
 
@@ -28,8 +29,9 @@ def quicksort(array, left:int , right:int ):
         quicksort(array, partition+1, right)
 
 
+start= time.perf_counter()
 
-x = [1,4,5,3,2,6,8]
+x = [1,2,2,2,2,2,2,2,2,5]
 quicksort(x,0,len(x)-1)
-
-print(x)
+end = time.perf_counter()
+print(f"Time: {end - start:.6f} seconds")
