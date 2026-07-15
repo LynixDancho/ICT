@@ -7,25 +7,28 @@ import time
 from collections import deque
 from collections import OrderedDict
 
-class LRUcach:
-    def __init__(self,capacity ):
-        self.capacity = capacity
-        self.cache = OrderedDict()
-    def get(self,key ):
-        if key not in self.cache:
-            return -1
-        self.cache.move_to_end(key)
-        return self.cache[key]
-    def put(self,key,value):
-        if key in self.cache:
-            self.cache.move_to_end(key)
-        self.cache[key]= value
-        if len(self.cache) > self.capacity:
-            self.cache.popitem(False)
 
-
-            
         
+class ListNode:
+     def __init__(self, val=0, next=None):
+         self.val = val
+         self.next = next
+class Solution:
+    def sortList(self, head: ListNode) -> ListNode:
+        tail = head
+        hail = head 
+        i=0
+        max= [] 
+        while tail :
+             max.append(tail.val)
+             tail = tail.next  
+        max.sort()
+        while i < len(max):
+            head.val = max[i]
+            head = head.next
+            i+=1
+        
+        return hail 
 
-ye = deque()
-print()
+
+head = [4,2,1,3] 
