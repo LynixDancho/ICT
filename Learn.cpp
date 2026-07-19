@@ -1,13 +1,14 @@
-// This program prints the C++ language standard your compiler is currently using
-// Freely redistributable, courtesy of learncpp.com (https://www.learncpp.com/cpp-tutorial/what-language-standard-is-my-compiler-using/)
-
 #include <iostream>
 
- 
+// void means the function does not return a value to the caller
+void printHi()
+{
+    std::cout << "Hi" << '\n';
+}
 
 int main()
 {
-    
- std::cout << sizeof(long ) << '\n';
+    printHi(); // okay: function printHi() is called, no value is returned
 
-     return 0; }  
+    return 0;
+}
