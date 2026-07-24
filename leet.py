@@ -7,9 +7,8 @@ import time
 from collections import deque
 from collections import OrderedDict
 import pandas as pd 
-
+import statsmodels as sm
 
 df = pd.read_csv("./housing.csv")
 
-
-print(df)
+df= df.fillna(df['total_bedrooms'].mean())
